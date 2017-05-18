@@ -37,7 +37,15 @@ class Model(object):
 
         self.snapshot = 5000
 
-    def forward(self, imcrop_batch, text_seq_batch, is_training=True):
+
+        #args for subclass models
+        self.args = args
+
+    def forward(self, imcrop_batch, text_seq_batch, is_training=True, model='base'):
+        """
+        This function forward the inputs and return the tensor of mask score
+        Subclass model must override this method.
+        """
         raise NotImplementedError('Model must implment forward method')
 
     def get_train_var_list(self):
