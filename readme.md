@@ -53,17 +53,17 @@ model = FCN(fix_convnet=False, vgg_dropout=True, max_iter=18000, start_lr=0.1)
 The configurable parameters are not well-documented yet, and it can be found in `__init__` method of models now.
 
 ## Todo
-- [] load model
-- [] test model
+- [ ] load model
+- [ ] test model
 - [x] train model
 - [x] training summary
 - [x] fcn-based model
 - [x] deeplab-based model
-- [] deeplab101-based model (use [tensorflow-deeplab-resnet](https://github.com/DrSleep/tensorflow-deeplab-resnet))
-- [] recurrent multimodal interaction model
+- [ ] deeplab101-based model (use [tensorflow-deeplab-resnet](https://github.com/DrSleep/tensorflow-deeplab-resnet))
+- [ ] recurrent multimodal interaction model
 - [x] integrate referit dataset
-- [] integrate coco dataset
-- [] integrate coco+ dataset
-- [] integrate coco-ref dataset
-- [] demo file
-- [] document for model parameters
+- [ ] integrate coco dataset
+- [ ] integrate coco+ dataset
+- [ ] integrate coco-ref dataset
+- [ ] demo file
+- [ ] document for model parameters
