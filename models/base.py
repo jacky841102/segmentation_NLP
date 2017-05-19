@@ -110,14 +110,16 @@ class base(object):
         
 
         #Add summary for tensorboard
-        tf.summary.scalar('loss', self.cls_loss)
-        tf.summary.scalar('learning rate', self.learning_rate)
-        tf.summary.scalar('accuracy all', acc_all)
-        tf.summary.scalar('accuracy positive', acc_pos)
-        tf.summary.scalar('accuracy negative', acc_neg)
-        tf.summary.scalar('accuracy all average', acc_all_avg)
-        tf.summary.scalar('accuracy positive average', acc_pos_avg)
-        tf.summary.scalar('accuracy negative average', acc_neg_avg)
+        tf.summary.scalar('loss', self.cls_loss, ['train'])
+        tf.summary.scalar('learning_rate', self.learning_rate, ['train'])
+        tf.summary.scalar('accuracy_all', acc_all, ['acc'])
+        tf.summary.scalar('accuracy_positive', acc_pos, ['acc'])
+        tf.summary.scalar('accuracy_negative', acc_neg, ['acc'])
+        tf.summary.scalar('accuracy_all_average', acc_all_avg, ['acc'])
+        tf.summary.scalar('accuracy_positive_average', acc_pos_avg, ['acc'])
+        tf.summary.scalar('accuracy_negative_average', acc_neg_avg, ['acc'])
+        train_summary = tf.summary.merge_all(key='train')
+        acc_summary = tf.summary.merge_all(key='acc')
 
         # tf.train.Saver is used to save and load intermediate models.
         self.saver = tf.train.Saver(max_to_keep=50, keep_checkpoint_every_n_hours=1)
@@ -126,7 +128,6 @@ class base(object):
         self.sess = sess
 
         # Init train_writer
-        merged = tf.summary.merge_all()
         train_writer = tf.summary.FileWriter(self.log_folder, sess.graph)
 
         #Run initialization operations
@@ -140,7 +141,7 @@ class base(object):
             label_val = batch['label_fine_batch'].astype(np.float32)
 
             # Forward and Backward pass
-            scores_val, cls_loss_val, _, lr_val = sess.run([self.scores, self.cls_loss, train_op, self.learning_rate],
+            scores_val, cls_loss_val, _, lr_val, train_sum = sess.run([self.scores, self.cls_loss, train_op, self.learning_rate, train_summary],
                 feed_dict={
                     self.text_seq_batch  : text_seq_val,
                     self.imcrop_batch    : imcrop_val,
@@ -162,7 +163,7 @@ class base(object):
 
             if (n_iter + 1) % self.log_step == 0:
                 #Fillin placeholder of accuracy
-                sess.run([acc_all, acc_neg, acc_pos, acc_all_avg, acc_pos_avg, acc_neg_avg], 
+                acc_sum = sess.run(acc_summary, 
                     feed_dict={
                         acc_all: accuracy_all,
                         acc_pos: accuracy_pos,
@@ -173,12 +174,12 @@ class base(object):
                     }
                 )
 
-                summary = sess.run([merged])
-                train_writer.add_summary(summary, step)
+                train_writer.add_summary(train_sum, n_iter)
+                train_writer.add_summary(acc_sum, n_iter)
 
             if (n_iter + 1) % self.checkpoint_step == 0 or (n_iter+1) >= self.max_iter:
                 checkpoint_path = os.path.join(self.log_folder, 'checkpoints')
-                self.save(checkpoint_path, n_iter)
+                self.save(checkpoint_path, n_iter + 1)
 
     def load(self, checkpoint_dir='checkpoints', step=None):
         pass
