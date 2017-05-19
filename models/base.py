@@ -121,7 +121,7 @@ class base(object):
         print('\tbatch_size: %d' % self.batch_size)
         print('\tmax_iter: %d' % self.max_iter)
         print('\tstart_lr: %f' % self.start_lr)
-        print('\tlr_decay_step: %f' % self.lr_decay_step)
+        print('\tlr_decay_step: %d' % self.lr_decay_step)
         print('\tlr_decay_rate: %f' % self.lr_decay_rate)
         print('\tweight_decay: %f' % self.weight_decay)
         print('\tmomentum: %f' % self.momentum)
@@ -172,7 +172,9 @@ class base(object):
         sess.run(tf.global_variables_initializer())
         self.initialize(sess)
 
-        for n_iter in range(self.max_iter):
+        self.log_info()
+
+        for n_iter in range(1, self.max_iter+1):
             batch = reader.read_batch()
             text_seq_val = batch['text_seq_batch']
             imcrop_val = batch['imcrop_batch'].astype(np.float32) - self.channel_mean
@@ -198,23 +200,26 @@ class base(object):
             avg_accuracy_pos = decay*avg_accuracy_pos + (1-decay)*accuracy_pos
             avg_accuracy_neg = decay*avg_accuracy_neg + (1-decay)*accuracy_neg
 
-            if (n_iter + 1) % self.log_step == 0:
-                num_examples_per_step = self.batch_size
-                examples_per_sec = num_examples_per_step / duration
-                sec_per_batch = float(duration)
 
-                format_str = ('%s: iter %d, %.1f data/sec; %.3f '
-                              'sec/batch')
-                print (format_str % (datetime.now(), n_iter,
-                                     examples_per_sec, sec_per_batch))
-                                     
-                print('\titer = %d, cls_loss (cur) = %f, cls_loss (avg) = %f, lr = %f'
-                    % (n_iter, cls_loss_val, cls_loss_avg, lr_val))
-                print('\titer = %d, accuracy (cur) = %f (all), %f (pos), %f (neg)'
-                    % (n_iter, accuracy_all, accuracy_pos, accuracy_neg))
-                print('\titer = %d, accuracy (avg) = %f (all), %f (pos), %f (neg)'
-                    % (n_iter, avg_accuracy_all, avg_accuracy_pos, avg_accuracy_neg))
+            # log accuracy per iter
+            num_examples_per_step = self.batch_size
+            examples_per_sec = num_examples_per_step / duration
+            sec_per_batch = float(duration)
 
+            format_str = ('%s: iter %d, %.1f data/sec; %.3f '
+                          'sec/batch')
+            print (format_str % (datetime.now(), n_iter,
+                                 examples_per_sec, sec_per_batch))
+                                 
+            print('\titer = %d, cls_loss (cur) = %f, cls_loss (avg) = %f, lr = %f'
+                % (n_iter, cls_loss_val, cls_loss_avg, lr_val))
+            print('\titer = %d, accuracy (cur) = %f (all), %f (pos), %f (neg)'
+                % (n_iter, accuracy_all, accuracy_pos, accuracy_neg))
+            print('\titer = %d, accuracy (avg) = %f (all), %f (pos), %f (neg)'
+                % (n_iter, avg_accuracy_all, avg_accuracy_pos, avg_accuracy_neg))
+
+
+            if n_iter % self.log_step == 0:
                 #Fillin placeholder of accuracy
                 acc_sum = sess.run(acc_summary, 
                     feed_dict={
@@ -230,9 +235,9 @@ class base(object):
                 train_writer.add_summary(train_sum, n_iter)
                 train_writer.add_summary(acc_sum, n_iter)
 
-            if (n_iter + 1) % self.checkpoint_step == 0 or (n_iter+1) >= self.max_iter:
+            if n_iter % self.checkpoint_step == 0 or n_iter >= self.max_iter:
                 checkpoint_path = os.path.join(self.log_folder, 'checkpoints')
-                self.save(checkpoint_path, n_iter + 1)
+                self.save(checkpoint_path, n_iter)
 
     def load(self, checkpoint_dir='checkpoints', step=None):
         pass
