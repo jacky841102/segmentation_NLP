@@ -12,13 +12,14 @@ from models.components import vgg_net, lstm_net
 from models.processing_tools import *
 
 class FCN(base):
-    def __init__(self, args):
-        super(self.__class__, self).__init__(args)
+    def __init__(self, **kwargs):
+        super(self.__class__, self).__init__(**kwargs)
         self.model_name = 'fcn'
 
     def forward(self, imcrop_batch, text_seq_batch, is_training=True):
         num_vocab, embed_dim, lstm_dim, mlp_hidden_dims = self.num_vocab, self.embed_dim, self.lstm_dim, self.mlp_hidden_dims
-        vgg_dropout, mlp_dropout = self.args['vgg_dropout'] or False, self.args['mlp_dropout'] or False
+        vgg_dropout = self.kwargs['vgg_dropout'] if 'vgg_dropout' in self.kwargs else False
+        mlp_dropout = self.kwargs['mlp_dropout'] if 'mlp_dropout' in self.kwargs else False
 
         with tf.variable_scope(self.model_name):
             # Language feature (LSTM hidden state)
@@ -57,7 +58,7 @@ class FCN(base):
         return upsample32s
 
     def get_train_var_list(self):
-        fix_convnet = True 
+        fix_convnet = self.kwargs['fix_convnet'] if 'fix_convnet' in self.kwargs else True
 
         if fix_convnet:
             return [var for var in tf.trainable_variables() if 'fcn/vgg_local/conv' not in var.name]
@@ -66,7 +67,7 @@ class FCN(base):
         
 
     def initialize(self, sess):
-        pretrained_file = self.args['pretrained_file'] if 'pretrained_file' in self.args \
+        pretrained_file = self.kwargs['pretrained_file'] if 'pretrained_file' in self.kwargs \
                                 else 'models/components/pretrained/vgg_params.npz'
 
         convnet_layers = ['conv1_1', 'conv1_2', 'conv2_1', 'conv2_2',

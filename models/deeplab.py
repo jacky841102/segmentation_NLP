@@ -13,15 +13,16 @@ from models.processing_tools import *
 from six.moves import cPickle
 
 class Deeplab(base):
-    def __init__(self, args):
-        super(self.__class__, self).__init__(args)
+    def __init__(self, **kwargs):
+        super(self.__class__, self).__init__(**kwargs)
         self.model_name = 'deeplab'
         self.featmap_H = 64
         self.featmap_W = 64
 
     def forward(self, imcrop_batch, text_seq_batch, is_training=True):
         num_vocab, embed_dim, lstm_dim, mlp_hidden_dims = self.num_vocab, self.embed_dim, self.lstm_dim, self.mlp_hidden_dims
-        deeplab_dropout, mlp_dropout = self.args['deeplab_dropout'], self.args['mlp_dropout']
+        deeplab_dropout = self.kwargs['deeplab_dropout'] if 'deeplab_dropout' in self.kwargs else False
+        mlp_dropout = self.kwargs['mlp_dropout'] if 'mlp_dropout' in self.kwargs else False
 
         with tf.variable_scope(self.model_name):
             # Language feature (LSTM hidden state)
@@ -58,7 +59,7 @@ class Deeplab(base):
         return upsample8s
 
     def get_train_var_list(self):
-        fix_convnet = True 
+        fix_convnet = self.kwargs['fix_convnet'] if 'fix_convnet' in self.kwargs else True
 
         if fix_convnet:
             return [var for var in tf.trainable_variables() if 'deeplab/deeplab/conv' not in var.name]
@@ -67,7 +68,7 @@ class Deeplab(base):
         
 
     def initialize(self, sess):
-        pretrained_file = self.args['pretrained_file'] if 'pretrained_file' in self.args \
+        pretrained_file = self.kwargs['pretrained_file'] if 'pretrained_file' in self.kwargs \
                                 else 'models/components/pretrained/deeplab_weights.ckpt'
 
         with open(pretrained_file, 'r') as f:
