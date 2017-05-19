@@ -15,6 +15,7 @@ class FCN(base):
     def __init__(self, **kwargs):
         super(self.__class__, self).__init__(**kwargs)
         self.model_name = 'fcn'
+        self.log_folder = './log/%s/%s' % (self.dataset, self.model_name)
 
     def forward(self, imcrop_batch, text_seq_batch, is_training=True):
         num_vocab, embed_dim, lstm_dim, mlp_hidden_dims = self.num_vocab, self.embed_dim, self.lstm_dim, self.mlp_hidden_dims

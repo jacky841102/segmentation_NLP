@@ -50,7 +50,7 @@ class base(object):
         self.data_folder = './data/%s/train_batch_seg' % self.dataset
         self.data_prefix = "%s_train_seg" % self.dataset
 
-        self.log_folder = './log/%s' % self.dataset
+        self.log_folder = './log/%s/%s' % (self.dataset, self.model_name)
         self.log_step = kwargs['log_step'] if 'log_step' in kwargs else 10
         self.checkpoint_step = kwargs['checkpoint_step'] if 'checkpoint_step' in kwargs else 5000
 
