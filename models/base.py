@@ -24,7 +24,7 @@ class base(object):
         self.mlp_hidden_dims = 500
 
         #Training parms
-        self.max_iter = 1
+        self.max_iter = 10
         self.start_lr = 0.01
         self.lr_decay_step = 6000
         self.lr_decay_rate = 0.1
@@ -38,8 +38,8 @@ class base(object):
         self.data_prefix = "referit_train_seg"
 
         self.log_folder = './log/' + self.dataset
-
-        self.snapshot = 5000
+        self.log_step = 1 
+        self.checkpoint_step = 5000
 
 
         #args for subclass models
@@ -69,13 +69,14 @@ class base(object):
         #Calculate loss
         self.cls_loss = loss.weighed_logistic_loss(self.scores, self.label_batch)
 
-        # Add regularization to weight matrices (excluding bias)
+        #Add regularization to weight matrices (excluding bias)
         reg_var_list = [var for var in tf.trainable_variables()
                 if (var in self.train_var_list) and
                 (var.name[-9:-2] == 'weights' or var.name[-8:-2] == 'Matrix')]
 
         reg_loss = loss.l2_regularization_loss(reg_var_list, self.weight_decay)
         self.total_loss = self.cls_loss + reg_loss
+
 
     def train_op(self, loss, train_var_list):
         global_step = tf.Variable(0, trainable=False)
@@ -103,16 +104,30 @@ class base(object):
         avg_accuracy_all, avg_accuracy_pos, avg_accuracy_neg = 0, 0, 0
         decay = 0.99
 
+        #Accuracy palceholder
+        acc_all, acc_pos, acc_neg = tf.placeholder(tf.float32, shape=()), tf.placeholder(tf.float32, shape=()), tf.placeholder(tf.float32, shape=())
+        acc_all_avg, acc_pos_avg, acc_neg_avg = tf.placeholder(tf.float32, shape=()), tf.placeholder(tf.float32, shape=()), tf.placeholder(tf.float32, shape=())
+        
+
         #Add summary for tensorboard
-
-
-
+        tf.summary.scalar('loss', self.cls_loss)
+        tf.summary.scalar('learning rate', self.learning_rate)
+        tf.summary.scalar('accuracy all', acc_all)
+        tf.summary.scalar('accuracy positive', acc_pos)
+        tf.summary.scalar('accuracy negative', acc_neg)
+        tf.summary.scalar('accuracy all average', acc_all_avg)
+        tf.summary.scalar('accuracy positive average', acc_pos_avg)
+        tf.summary.scalar('accuracy negative average', acc_neg_avg)
 
         # tf.train.Saver is used to save and load intermediate models.
         self.saver = tf.train.Saver(max_to_keep=50, keep_checkpoint_every_n_hours=1)
 
         sess = tf.Session()
         self.sess = sess
+
+        # Init train_writer
+        merged = tf.summary.merge_all()
+        train_writer = tf.summary.FileWriter(self.log_folder, sess.graph)
 
         #Run initialization operations
         sess.run(tf.global_variables_initializer())
@@ -145,7 +160,23 @@ class base(object):
             print('\titer = %d, accuracy (avg) = %f (all), %f (pos), %f (neg)'
                 % (n_iter, avg_accuracy_all, avg_accuracy_pos, avg_accuracy_neg))
 
-            if (n_iter + 1) % self.snapshot == 0 or (n_iter+1) >= self.max_iter:
+            if (n_iter + 1) % self.log_step == 0:
+                #Fillin placeholder of accuracy
+                sess.run([acc_all, acc_neg, acc_pos, acc_all_avg, acc_pos_avg, acc_neg_avg], 
+                    feed_dict={
+                        acc_all: accuracy_all,
+                        acc_pos: accuracy_pos,
+                        acc_neg: accuracy_neg,
+                        acc_all_avg: avg_accuracy_all,
+                        acc_pos_avg: avg_accuracy_pos,
+                        acc_neg_avg: avg_accuracy_neg
+                    }
+                )
+
+                summary = sess.run([merged])
+                train_writer.add_summary(summary, step)
+
+            if (n_iter + 1) % self.checkpoint_step == 0 or (n_iter+1) >= self.max_iter:
                 checkpoint_path = os.path.join(self.log_folder, 'checkpoints')
                 self.save(checkpoint_path, n_iter)
 
