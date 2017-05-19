@@ -7,7 +7,7 @@ from util.cnn import conv_relu_layer as conv_relu
 from util.cnn import deconv_layer as deconv
 from util.cnn import fc_layer as fc
 from util.cnn import fc_relu_layer as fc_relu
-from models import base
+from models.base import *
 from models.components import vgg_net, lstm_net
 from models.processing_tools import *
 

@@ -1,8 +1,9 @@
 import tensorflow as tf
 import numpy as np
 from util import data_reader, loss
+from models.processing_tools import compute_accuracy
 
-class Model(object):
+class base(object):
     def __init__(self, args):
         self.channel_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32)
 
@@ -28,10 +29,10 @@ class Model(object):
         self.momentum = 0.9
 
         #which dataset to use, e.g. referit, coco, coco+, cocoref
-        self.dataset = 'coco'
+        self.dataset = 'referit'
 
-        self.data_folder = './data/' + self.dataset
-        self.data_prefix = ""
+        self.data_folder = './data/' + self.dataset + '/train_batch_seg'
+        self.data_prefix = "referit_train_seg"
 
         self.log_folder = './log/' + self.dataset
 
@@ -57,30 +58,36 @@ class Model(object):
     def build_model(self):
         self.imcrop_batch = tf.placeholder(tf.float32, [self.batch_size, self.input_H, self.input_W, 3])
         self.text_seq_batch = tf.placeholder(tf.int32, [self.rnn_cells, self.batch_size])
-        self.label_batch = tf.placeholder(tf.float32, [self.batch_size, self.input_H, self.input_W])
+        self.label_batch = tf.placeholder(tf.float32, [self.batch_size, self.input_H, self.input_W, 1])
         self.scores = self.forward(self.imcrop_batch, self.text_seq_batch)
 
         self.train_var_list = self.get_train_var_list()
 
         #Calculate loss
-        self.cls_loss = loss.weighted_logistic_loss(scores, self.label_batch)
+        self.cls_loss = loss.weighed_logistic_loss(self.scores, self.label_batch)
 
         # Add regularization to weight matrices (excluding bias)
         reg_var_list = [var for var in tf.trainable_variables()
                 if (var in self.train_var_list) and
                 (var.name[-9:-2] == 'weights' or var.name[-8:-2] == 'Matrix')]
 
-        reg_loss = loss.l2_regularization_loss(reg_var_list, weight_decay)
-        self.total_loss = cls_loss + reg_loss
+        reg_loss = loss.l2_regularization_loss(reg_var_list, self.weight_decay)
+        self.total_loss = self.cls_loss + reg_loss
 
     def train_op(self, loss, train_var_list):
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.train.exponential_decay(self.start_lr, global_step, self.lr_decay_step, 
+        self.learning_rate = tf.train.exponential_decay(self.start_lr, global_step, self.lr_decay_step, 
             self.lr_decay_rate, staircase=True)
-        solver = tf.train.MomentumOptimizaer(learning_rate=learning_rate, momentum=self.momentum)
+        solver = tf.train.MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum)
         grads_and_vars = solver.compute_gradients(loss, var_list=self.train_var_list)
         train_step = solver.apply_gradients(grads_and_vars, global_step=global_step)
         return train_step
+
+    def initialize(self):
+        """
+        This function run customized initialize operations that subclass override.
+        """
+        pass
 
     def train(self):
         #Build model, and get train_op
@@ -95,6 +102,12 @@ class Model(object):
 
         # tf.train.Saver is used to save and load intermediate models.
         self.saver = tf.train.Saver(max_to_keep=50, keep_checkpoint_every_n_hours=1)
+
+        sess = tf.Session()
+
+        #Run initialization operations
+        sess.run(tf.global_variables_initializer())
+        self.initialize()
 
         for n_iter in range(self.max_iter):
             batch = reader.read_batch()
@@ -114,7 +127,7 @@ class Model(object):
                 % (n_iter, cls_loss_val, cls_loss_avg, lr_val))
 
             # Accuracy
-            accuracy_all, accuracy_pos, accuracy_neg = segmodel.compute_accuracy(scores_val, label_val)
+            accuracy_all, accuracy_pos, accuracy_neg = compute_accuracy(scores_val, label_val)
             avg_accuracy_all = decay*avg_accuracy_all + (1-decay)*accuracy_all
             avg_accuracy_pos = decay*avg_accuracy_pos + (1-decay)*accuracy_pos
             avg_accuracy_neg = decay*avg_accuracy_neg + (1-decay)*accuracy_neg
