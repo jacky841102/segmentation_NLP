@@ -45,7 +45,7 @@ class base(object):
         #args for subclass models
         self.args = args
 
-    def forward(self, imcrop_batch, text_seq_batch, is_training=True, model='base'):
+    def forward(self, imcrop_batch, text_seq_batch, is_training=True):
         """
         This function forward the inputs and return the tensor of mask score
         Subclass model must override this method.
@@ -87,9 +87,9 @@ class base(object):
         train_step = solver.apply_gradients(grads_and_vars, global_step=global_step)
         return train_step
 
-    def initialize(self):
+    def initialize(self, sess):
         """
-        This function run customized initialize operations that subclass override.
+        This function run customized initialization operations that subclass override.
         """
         pass
 
@@ -132,7 +132,7 @@ class base(object):
 
         #Run initialization operations
         sess.run(tf.global_variables_initializer())
-        self.initialize()
+        self.initialize(sess)
 
         for n_iter in range(self.max_iter):
             batch = reader.read_batch()

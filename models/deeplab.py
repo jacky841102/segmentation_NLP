@@ -10,6 +10,7 @@ from util.cnn import fc_relu_layer as fc_relu
 from models.base import *
 from models.components import deeplab, lstm_net
 from models.processing_tools import *
+from six.moves import cPickle
 
 class Deeplab(base):
     def __init__(self, args):
@@ -18,11 +19,11 @@ class Deeplab(base):
         self.featmap_H = 64
         self.featmap_W = 64
 
-    def forward(self, imcrop_batch, text_seq_batch, is_training=True, model='deeplab'):
+    def forward(self, imcrop_batch, text_seq_batch, is_training=True):
         num_vocab, embed_dim, lstm_dim, mlp_hidden_dims = self.num_vocab, self.embed_dim, self.lstm_dim, self.mlp_hidden_dims
         deeplab_dropout, mlp_dropout = self.args['deeplab_dropout'], self.args['mlp_dropout']
 
-        with tf.variable_scope(model):
+        with tf.variable_scope(self.model_name):
             # Language feature (LSTM hidden state)
             feat_lang = lstm_net.lstm_net(text_seq_batch, num_vocab, embed_dim, lstm_dim)[0]
 
@@ -55,3 +56,33 @@ class Deeplab(base):
                     stride=8, output_dim=1, bias_term=False)
 
         return upsample8s
+
+    def get_train_var_list(self):
+        fix_convnet = True 
+
+        if fix_convnet:
+            return [var for var in tf.trainable_variables() if 'deeplab/deeplab/conv' not in var.name]
+        else:
+            return [var for var in tf.trainable_variables()]
+        
+
+    def initialize(self, sess):
+        pretrained_file = self.args['pretrained_file'] if 'pretrained_file' in self.args \
+                                else 'models/components/pretrained/deeplab_weights.ckpt'
+
+        with open(pretrained_file, 'r') as f:
+            pretrained_parms = cPickle.load(f)
+
+        convnet_layers = ['conv1_1', 'conv1_2', 'conv2_1', 'conv2_2',
+                  'conv3_1', 'conv3_2', 'conv3_3',
+                  'conv4_1', 'conv4_2', 'conv4_3',
+                  'conv5_1', 'conv5_2', 'conv5_3', 'fc6', 'fc7']
+
+        assign_ops = []
+        with tf.variable_scope('deeplab/deeplab', reuse=True):
+            for l_name in convnet_layers:
+                assign_W = tf.assign(tf.get_variable(l_name + '/weights'), pretrained_parms[l_name + '/w'])
+                assign_B = tf.assign(tf.get_variable(l_name + '/biases'), pretrained_parms[l_name + '/b'])
+                assign_ops += [assign_W, assign_B]
+
+        sess.run(tf.group(*assign_ops))

@@ -16,11 +16,11 @@ class FCN(base):
         super(self.__class__, self).__init__(args)
         self.model_name = 'fcn'
 
-    def forward(self, imcrop_batch, text_seq_batch, is_training=True, model='fcn'):
+    def forward(self, imcrop_batch, text_seq_batch, is_training=True):
         num_vocab, embed_dim, lstm_dim, mlp_hidden_dims = self.num_vocab, self.embed_dim, self.lstm_dim, self.mlp_hidden_dims
-        vgg_dropout, mlp_dropout = self.args['vgg_dropout'], self.args['mlp_dropout']
+        vgg_dropout, mlp_dropout = self.args['vgg_dropout'] or False, self.args['mlp_dropout'] or False
 
-        with tf.variable_scope(model):
+        with tf.variable_scope(self.model_name):
             # Language feature (LSTM hidden state)
             feat_lang = lstm_net.lstm_net(text_seq_batch, num_vocab, embed_dim, lstm_dim)[0]
 
@@ -55,5 +55,38 @@ class FCN(base):
                     stride=4, output_dim=1, bias_term=False)
 
         return upsample32s
+
+    def get_train_var_list(self):
+        fix_convnet = True 
+
+        if fix_convnet:
+            return [var for var in tf.trainable_variables() if 'fcn/vgg_local/conv' not in var.name]
+        else:
+            return [var for var in tf.trainable_variables()]
+        
+
+    def initialize(self, sess):
+        pretrained_file = self.args['pretrained_file'] if 'pretrained_file' in self.args \
+                                else 'models/components/pretrained/vgg_params.npz'
+
+        convnet_layers = ['conv1_1', 'conv1_2', 'conv2_1', 'conv2_2',
+                  'conv3_1', 'conv3_2', 'conv3_3',
+                  'conv4_1', 'conv4_2', 'conv4_3',
+                  'conv5_1', 'conv5_2', 'conv5_3', 'fc6', 'fc7']
+
+        pretrained_parms = np.load(pretrained_file)
+
+        pretrained_W = pretrained_parms['processed_W'][()]
+        pretrained_B = pretrained_parms['processed_B'][()]
+
+        assign_ops = []
+        with tf.variable_scope('fcn/vgg_local', reuse=True):
+            for l_name in convnet_layers:
+                w = tf.get_variable(l_name + '/weights')
+                assign_W = tf.assign(w, pretrained_W[l_name].reshape(w.get_shape().as_list()))
+                assign_B = tf.assign(tf.get_variable(l_name + '/biases'), pretrained_B[l_name])
+                assign_ops += [assign_W, assign_B]
+
+        sess.run(tf.group(*assign_ops))
 
             
