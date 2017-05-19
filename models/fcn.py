@@ -12,6 +12,10 @@ from models.components import vgg_net, lstm_net
 from models.processing_tools import *
 
 class FCN(base):
+    def __init__(self, args):
+        super(self.__class__, self).__init__(args)
+        self.model_name = 'fcn'
+
     def forward(self, imcrop_batch, text_seq_batch, is_training=True, model='fcn'):
         num_vocab, embed_dim, lstm_dim, mlp_hidden_dims = self.num_vocab, self.embed_dim, self.lstm_dim, self.mlp_hidden_dims
         vgg_dropout, mlp_dropout = self.args['vgg_dropout'], self.args['mlp_dropout']

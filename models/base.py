@@ -1,11 +1,14 @@
 import tensorflow as tf
 import numpy as np
+import os
 from util import data_reader, loss
 from models.processing_tools import compute_accuracy
 
 class base(object):
     def __init__(self, args):
         self.channel_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32)
+        #Model name
+        self.model_name = 'base'
 
         #Model parms
         self.rnn_cells = 20
@@ -21,7 +24,7 @@ class base(object):
         self.mlp_hidden_dims = 500
 
         #Training parms
-        self.max_iter = 18000
+        self.max_iter = 1
         self.start_lr = 0.01
         self.lr_decay_step = 6000
         self.lr_decay_rate = 0.1
@@ -100,10 +103,16 @@ class base(object):
         avg_accuracy_all, avg_accuracy_pos, avg_accuracy_neg = 0, 0, 0
         decay = 0.99
 
+        #Add summary for tensorboard
+
+
+
+
         # tf.train.Saver is used to save and load intermediate models.
         self.saver = tf.train.Saver(max_to_keep=50, keep_checkpoint_every_n_hours=1)
 
         sess = tf.Session()
+        self.sess = sess
 
         #Run initialization operations
         sess.run(tf.global_variables_initializer())
@@ -144,7 +153,7 @@ class base(object):
         pass
 
     def save(self, checkpoint_dir, step):
-        model_name = "Scene.model"
+        model_name = self.model_name
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
         self.saver.save(self.sess, os.path.join(checkpoint_dir, model_name), global_step=step)

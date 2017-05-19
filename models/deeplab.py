@@ -14,6 +14,7 @@ from models.processing_tools import *
 class Deeplab(base):
     def __init__(self, args):
         super(self.__class__, self).__init__(args)
+        self.model_name = 'deeplab'
         self.featmap_H = 64
         self.featmap_W = 64
 
