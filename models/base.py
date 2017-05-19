@@ -21,7 +21,7 @@ class base(object):
         self.channel_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32)
 
         #Model name
-        self.model_name = 'base'
+        # self.model_name = 'base'
 
         #Model parms
         self.rnn_cells = kwargs['rnn_cells'] if 'rnn_cells' in kwargs else 20
